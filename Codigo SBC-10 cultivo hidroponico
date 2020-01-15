@@ -1,0 +1,145 @@
+﻿#include <ETH.h>
+#include <WiFi.h>
+#include <WiFiAP.h>
+#include <WiFiClient.h>
+#include <WiFiGeneric.h>
+#include <WiFiMulti.h>
+#include <WiFiScan.h>
+#include <WiFiServer.h>
+#include <WiFiSTA.h>
+#include <WiFiType.h>
+#include <WiFiUdp.h>
+
+#include "ThingsBoard.h"
+
+// #include <ESP8266WiFi.h>
+
+
+#define WIFI_AP             "SBC"
+#define WIFI_PASSWORD       "sbc$18-maceta" 
+
+#define TOKEN               "ZLXv4AhufZwPkjjbdFpD"
+#define THINGSBOARD_SERVER  "demo.thingsboard.io"
+
+//BAUD RATE PARA PUERTO SERIE 
+#define SERIAL_DEBUG_BAUD   115200
+
+#define WATER_SENSOR 2
+#define RELAY_PIN 23
+
+//INICIALIZANDO EL CLIENTE A THINGS
+WiFiClient espClient;
+//INICIALIZANDO LA INSTANCIA A THINGS
+ThingsBoard tb(espClient);
+//ESTADO DE LA SEÑAL WIFI
+int status = WL_IDLE_STATUS;
+
+void setup() {
+  // INICIALIZANDO EL SERIAL PARA DEBUGING
+  //Serial.begin(SERIAL_DEBUG_BAUD);
+  WiFi.begin(WIFI_AP, WIFI_PASSWORD);
+  InitWiFi();
+  
+  pinMode(RELAY_PIN, OUTPUT);
+  Serial.begin (9600);
+  pinMode(WATER_SENSOR, INPUT);
+}
+
+void loop() {
+  delay(1000);
+
+  if (WiFi.status() != WL_CONNECTED) {
+    reconnect();
+  }
+
+  if (!tb.connected()) {
+    
+    //CONEXION A THINGSBOARD
+    Serial.print("\n*****PROYECTO HIDROPONICO - SBC10*****");
+    Serial.print("\nConectando a: ");
+    Serial.print(THINGSBOARD_SERVER);
+    Serial.print(" con el Token ");
+    Serial.println(TOKEN);
+    Serial.print("\nCOMIENZO DE LAS LECTURAS DE DATOS EN TIEMPO REAL\n");
+    
+    if (!tb.connect(THINGSBOARD_SERVER, TOKEN)) {
+      Serial.println("Fallo al conectarse!");
+      return;
+    }
+  }
+
+  Serial.println("Enviando datos ...\n"); 
+  
+  //tb.sendTelemetryInt("SENSOR DE AGUA(SBC_10)", sensorAgua());
+  if(sensorAgua2()== 1){
+     tb.sendTelemetryInt("SENSOR DE AGUA(SBC_10)", sensorAgua());
+     tb.sendTelemetryString("SENSOR DE AGUA(SBC_10)", "No hay agua");
+  }
+  else{
+    tb.sendTelemetryInt("SENSOR DE AGUA(SBC_10)", sensorAgua());
+    tb.sendTelemetryString("SENSOR DE AGUA(SBC_10)", "Hay agua");
+  }
+  
+  tb.loop();
+}
+
+//FUNCION DE LECTURA DE VALORES DEL SENSOR AGUA + RELÉ CON SALIDAS PUERTO SERIE
+//int contador = 0;
+int sensorAgua(){
+  int a; 
+  a = digitalRead(WATER_SENSOR);
+  if (a==0){ //cuando sea 1 considero que hay agua 
+      Serial.println("Hay agua en la superficie de la PCB del sensor");
+      digitalWrite(RELAY_PIN, LOW);
+      return a;
+      delay(10000);
+    
+      }
+  else{ //si a es 0 no hay agua
+    Serial.println("No hay agua en la superficie de la PCB del sensor");
+    digitalWrite(RELAY_PIN, HIGH);
+    return a; 
+    delay(500);
+    }
+}
+
+/*funcion similar a sensorAgua, que simplemente se usa para devolver el valor de la lectura de sensor
+SIN TENER EN CUENTA LAS SALIDAS POR EL PUERTO SERIE*/
+int sensorAgua2(){
+  int a = 0;
+  a = digitalRead(WATER_SENSOR);
+  if (a==1){ //cuando sea 1 considero que hay agua 
+      return a;
+      delay(10000);
+      }
+  else{ //si a es 0 no hay agua
+    return a; 
+    delay(500);
+    }
+}
+
+
+void InitWiFi()
+{
+  Serial.println("Conectando al Wifi ...");
+
+  WiFi.begin(WIFI_AP, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("Conexión con exito al Wifi");
+}
+
+void reconnect() {
+  // bucle hasta reconectar
+  status = WiFi.status();
+  if ( status != WL_CONNECTED) {
+    WiFi.begin(WIFI_AP, WIFI_PASSWORD);
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+    }
+    Serial.println("Conectado al Wifi");
+  }
+}
