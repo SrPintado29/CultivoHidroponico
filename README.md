@@ -1,4 +1,4 @@
-# CultivoHidroponico-IoT:
+# Cultivo Hidroponico-IoT:
 
 - Desarrollo de un sistema IoT (ThingsBoard) con la placa ESP32-SparkFun, para el control y monitorización de un cultivo hidropónico. 
 - Código desarrollado totalmente en lenguaje C con Arduino. 
